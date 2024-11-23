@@ -110,7 +110,7 @@ sfree:
 # Funciones para crear y eliminar nodos
 # a0: list address
 # a1: NULL if category, node address (ID) if object
-# a2: *char to category/object name
+# a2: char* to category/object name
 # v0: node address added
 addnode:
     addi $sp, $sp, -8
@@ -145,7 +145,7 @@ delnode:
     addi $sp, $sp, -8
     sw $ra, 8($sp)
     sw $a0, 4($sp)
-    lw $a0, 8($a0) # get block address 0($a0)#
+    lw $a0, 8($a0) # get block address
     jal sfree # free block
     lw $a0, 4($sp) # restore argument a0
     lw $t0, 12($a0) # get address to next node of a0
@@ -192,7 +192,7 @@ newcategory:
     sw $ra, 4($sp)
     la $a0, catName # input category name
     jal getblock
-    move $a2, $v0 # $a2 = *char to category name
+    move $a2, $v0 # $a2 = char* to category name
     la $a0, cclist # $a0 = list
     li $a1, 0 # $a1 = NULL
     jal addnode
@@ -207,12 +207,12 @@ newcategory_end:
 
 
 nextcategory:
-    addi $sp, $sp, -4 # Reserva espacio en la pila
+    addiu $sp, $sp, -4 # Reserva espacio en la pila
     sw $ra, 4($sp) # Guarda el valor de retorno
     lw $t1, wclist            # Cargar la categoría actual seleccionada
     beqz $t1, error_no_category  # Si no hay categoría seleccionada, error (201)
     lw $t2, 12($t1)           # Obtener la dirección del siguiente nodo
-    beqz $t2, error_single_category  # Si hay solo una categoría, error (202)
+    beq $t2, $t1, error_single_category  # Si hay solo una categoría, error (202)
     move $t1, $t2             # Cambiar a la siguiente categoría
     sw $t1, wclist            # Actualizar la categoría seleccionada
     # Se ha seleccionado la categoria:
@@ -222,13 +222,40 @@ nextcategory:
     lw $a0, 8($t1)         # Cargar el puntero al nombre de la categoría (ubicado en el nodo)
     li $v0, 4              # syscall para imprimir cadena
     syscall
-    
-    lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
-    addi $sp, $sp, 4 # Liberar el espacio reservado en la pila.
     li $v0, 0                 # Operación exitosa
+    lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+    addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
     jr $ra
+    
+    error_no_category:
+        li $v0, 4
+        la $a0, error
+        syscall
+        li $v0, 1
+        li $a0, 201              # Error 201: No hay categoría seleccionada
+        syscall
+        la $a0, return            # Limpiar línea para la salida
+        li $v0, 4
+        syscall
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
+        jr $ra
+    error_single_category:
+        li $v0, 4
+        la $a0, error
+        syscall
+        li $v0, 1
+        li $a0, 202              # Error 202: Solo una categoría
+        syscall
+        la $a0, return            # Limpiar línea para la salida
+        li $v0, 4
+        syscall
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
+        jr $ra
+        
 prevcategory:
-    addi $sp, $sp, -4 # Reserva espacio en la pila
+    addiu $sp, $sp, -4 # Reserva espacio en la pila
     sw $ra, 4($sp) # Guarda el valor de retorno
     lw $t1, wclist            # Cargar la categoría actual seleccionada
     beqz $t1, error_no_category  # Si no hay categoría seleccionada, error (201)
@@ -243,163 +270,166 @@ prevcategory:
     lw $a0, 8($t1)         # Cargar el puntero al nombre de la categoría (ubicado en el nodo)
     li $v0, 4              # syscall para imprimir cadena
     syscall
-    lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
-    addi $sp, $sp, 4 # Liberar el espacio reservado en la pila.
     li $v0, 0                 # Operación exitosa
+    lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+    addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
     jr $ra
-error_no_category:
-    li $v0, 4
-    la $a0, error
-    syscall
-    li $v0, 1
-    li $a0, 201              # Error 201: No hay categoría seleccionada
-    syscall
-    la $a0, return            # Limpiar línea para la salida
-    li $v0, 4
-    syscall
-    jr $ra
-error_single_category:
-    li $v0, 4
-    la $a0, error
-    syscall
-    li $v0, 1
-    li $a0, 202              # Error 202: Solo una categoría
-    syscall
-    la $a0, return            # Limpiar línea para la salida
-    li $v0, 4
-    syscall
-    jr $ra
+
 
 
 listcategories:
-    #lw $t0, cclist            # Cargar la lista de categorías
-    lw $t0, wclist            # Cargar la categoría actual seleccionada
+    addiu $sp, $sp, -4 # Reserva espacio en la pila
+    sw $ra, 4($sp) # Guarda el valor de retorno
+    lw $t0, cclist            # Cargar la lista de categorías
     beqz $t0, error_empty      # Si la lista está vacía, mostrar error (301)
+    lw $t1, wclist            # Cargar la categoría actual seleccionada
+    lw $t3, cclist            # Cargar la lista de categorías para recorrer
     # Imprimir todas las categorías
     la $a0, return            # Limpiar línea para la salida
     li $v0, 4
     syscall
     # Recorremos la lista de categorías e imprimimos
     loop_cat:
-        #move $a0, $t1         # Cargar el nombre de la categoría
-        # Imprimir el símbolo ">" antes de la categoría seleccionada
+        beq $t3, $t1, sel_cat # Imprimir el símbolo ">" antes de la categoría seleccionada
+        li $v0, 11              # syscall para imprimir caracter
+        la $a0, 0x20           # Mostrar un espacio antes del nombre de la categoría seleccionada
+        syscall
+        j no_sel_cat
+    sel_cat:
         li $v0, 11              # syscall para imprimir caracter
         la $a0, 0x3E           # Mostrar símbolo ">" antes del nombre de la categoría seleccionada
         syscall
-        lw $a0, 8($t0)         # Cargar el nombre de la categoría desde el nodo
+    no_sel_cat:
+        lw $a0, 8($t3)         # Cargar el nombre de la categoría desde el nodo
         li $v0, 4
         syscall
-        lw $t0, 12($t0)       # Ir al siguiente nodo
-        lw $t3, wclist         # Cargar la categoría seleccionada en wclist
+        lw $t3, 12($t3)       # Ir al siguiente nodo
         beq $t0, $t3, end_list     # Si se llega al final de la lista, salir
         j loop_cat
     end_list:
+        la $a0, return           # Limpiar línea para la salida
+        li $v0, 4
+        syscall
         li $v0, 0             # Operación exitosa
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
         jr $ra
-
-error_empty:
-    li $v0, 4
-    la $a0, error
-    syscall
-    li $v0, 1
-    li $a0, 301              # Error 301: No hay categorías
-    syscall
-    la $a0, return            # Limpiar línea para la salida
-    li $v0, 4
-    syscall
-    jr $ra
-
+    error_empty:
+        li $v0, 4
+        la $a0, error
+        syscall
+        li $v0, 1
+        li $a0, 301              # Error 301: No hay categorías
+        syscall
+        la $a0, return            # Limpiar línea para la salida
+        li $v0, 4
+        syscall
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
+        jr $ra
 
 
 delcategory:
-    #lw $t0, cclist            # Cargar la lista de categorías
-    lw $t0, wclist            # Cargar la lista de categorías
+    addiu $sp, $sp, -4 # Reserva espacio en la pila
+    sw $ra, 4($sp) # Guarda el valor de retorno
+    lw $t0, cclist            # Cargar la lista de categorías
     beqz $t0, error_empty_del      # Si la lista está vacía, mostrar error (401)
     # Verificar si la categoría tiene objetos
     lw $t1, 4($t0)            # Verificar si tiene objetos
     beqz $t1, delete_category
     # Primero eliminar los objetos asociados
     #jal delobject             # Llamar a la función que elimina los objetos
-delete_category:
-    # Eliminar la categoría (liberar memoria)
-    la $a0, 0($t0) # $a0 = node address to delete
-    la $a1, cclist # $a1 = list
-    jal delnode               # Llamar a la función que elimina el nodo
-    li $v0, 0                 # Operación exitosa
-    jr $ra
-error_empty_del:
-    li $v0, 4
-    la $a0, error
-    syscall
-    li $v0, 1
-    li $a0, 401              # Error 401: No hay categorías
-    syscall
-    la $a0, return           # Limpiar línea para la salida
-    li $v0, 4
-    syscall
-    jr $ra
-
-
-
+    delete_category:
+        lw $a0, wclist # $a0 = node address to delete (el nodo al que apunta wclist)
+        la $a1, cclist # $a1 = list (la dirección de la lista para actualizar)
+        jal delnode               # Llamar a la función que elimina el nodo
+        lw $t0, cclist         # Cargamos el valor de cclist
+        sw $t0, wclist         # Almacenamos el valor de cclist en wclist
+        li $v0, 0                 # Operación exitosa
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
+        jr $ra
+    error_empty_del:
+        li $v0, 4
+        la $a0, error
+        syscall
+        li $v0, 1
+        li $a0, 401              # Error 401: No hay categorías
+        syscall
+        la $a0, return           # Limpiar línea para la salida
+        li $v0, 4
+        syscall
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
+        jr $ra
 
 
 newobject:
-    # Verificar si hay una categoría seleccionada en curso
-    lw $t0, wclist           # Cargar la lista de categorías
-    beqz $t0, error_empty_new_obj  # Si no hay categoría seleccionada, error
-    
-    addi $sp, $sp, -4 # Reserva espacio en la pila
+    addiu $sp, $sp, -4 # Reserva espacio en la pila
     sw $ra, 4($sp) # Guarda el valor de retorno
-    
+    lw $t0, cclist           # Cargar la lista de categorías
+    beqz $t0, error_empty_new_obj  # Si no hay categoría seleccionada, error
     la $a0, objName # input object name
     jal getblock
-    move $a2, $v0 # $a2 = *char to category name
-    la $a0, 4($t0) # Dirección 1° objeto
+    move $a2, $v0 # $a2 = char* to category name
+    lw $t0, wclist            # Cargar la categoría actual seleccionada
+    lw $a0, 4($t0) # 1° objeto
     jal get_id_obj
     move $a1, $v0 # $$a1 = ID obj node
-    la $a0, cclist # $a0 = list
+        move $s5, $v0 # Me guardo id antes de llamar a addnode que me pisa $a1
+    la $a0, 4($t0) # Dirección 1° objeto
     jal addnode
-
+    bne $s5, 1, obj_exist
+    lw $t0, wclist            # Cargar la categoría actual seleccionada
+    sw $v0, 4($t0) # update obj pointer
+    obj_exist:
     li $v0, 4                # Imprimir mensaje de éxito
     la $a0, success
     syscall
-    lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
-    addi $sp, $sp, 4 # Liberar el espacio reservado en la pila.
     li $v0, 0                 # Operación exitosa
-    jr $ra
-
-get_id_obj:
-    addi $sp, $sp, -4 # Reserva espacio en la pila
-    sw $ra, 4($sp) # Guarda el valor de retorno
-    
-    #beqz $a0, 
-    #bnez $a0, 
-    li $a0, 1
-    move $v0, $a0
-    
     lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
-    addi $sp, $sp, 4 # Liberar el espacio reservado en la pila.
-    li $v0, 0                 # Operación exitosa
+    addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
     jr $ra
-
-error_empty_new_obj:
-    # Si no hay categoría seleccionada
-    li $v0, 4
-    la $a0, error
-    syscall
-    li $v0, 1
-    li $a0, 501              # Error 501: No hay categorías
-    syscall
-    la $a0, return           # Limpiar línea para la salida
-    li $v0, 4
-    syscall
-    jr $ra
-
-
-
+    error_empty_new_obj:
+        # Si no hay categoría seleccionada
+        li $v0, 4
+        la $a0, error
+        syscall
+        li $v0, 1
+        li $a0, 501              # Error 501: No hay categorías
+        syscall
+        la $a0, return           # Limpiar línea para la salida
+        li $v0, 4
+        syscall
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
+        jr $ra
+    get_id_obj:
+        addiu $sp, $sp, -12
+        sw $ra, 12($sp)
+        sw $a0, 8($sp)
+        sw $a1, 4($sp)
+        beqz $a0, node_id
+        li $v0, 1 # Inicio contador, ya se que no está vacío
+        move $a1, $a0 # guardo puntero a 1° objeto
+        loop_get_id:
+            lw $a0, 12($a0)   # Ir al siguiente nodo
+            beq $a0, $a1, exit_id
+            addi $v0, $v0, 1
+            j loop_get_id
+        node_id:
+            li $v0, 1
+        exit_id:
+            lw $a1, 4($sp)
+            lw $a0, 8($sp)
+            lw $ra, 12($sp)
+            addiu $sp, $sp, 12
+            jr $ra
 
 
 listobjects:
+    addiu $sp, $sp, -4 # Reserva espacio en la pila
+    sw $ra, 4($sp) # Guarda el valor de retorno
     lw $t0, wclist            # Cargar la categoría actual seleccionada
     beqz $t0, error_empty_cat_list_obj      # Si no hay categoría seleccionada, error
     lw $t0, 4($t0)            # Cargar el primer objeto
@@ -409,12 +439,10 @@ listobjects:
     li $v0, 4
     syscall
     # Recorremos la lista de objetos e imprimimos
-    move $t0, $t1 # Guardo 1° obj
-    #lw $t1, ($t0) # Guardo 1° obj
+    move $t1, $t0 # Guardo 1° obj
     loop_obj:
-        # Imprimir el símbolo ">" antes del objeto seleccionada
         li $v0, 11              # syscall para imprimir caracter
-        la $a0, 0x3E           # Mostrar símbolo ">" antes del nombre de la categoría seleccionada
+        la $a0, 0x09           # Mostrar un tabulador antes del nombre del objeto
         syscall
         lw $a0, 8($t0)         # Cargar el nombre del objeto desde el nodo
         li $v0, 4
@@ -423,37 +451,41 @@ listobjects:
         beq $t0, $t1, end_list_obj     # Si se llega al final de la lista, salir
         j loop_obj
     end_list_obj:
+        la $a0, return           # Limpiar línea para la salida
+        li $v0, 4
+        syscall
         li $v0, 0             # Operación exitosa
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
         jr $ra
-
-error_empty_cat_list_obj:
-    # Si no hay categoría seleccionada
-    li $v0, 4
-    la $a0, error
-    syscall
-    li $v0, 1
-    li $a0, 601              # Error 601: No hay categorías
-    syscall
-    la $a0, return           # Limpiar línea para la salida
-    li $v0, 4
-    syscall
-    jr $ra
-error_empty_obj:
-    # Si no hay objetos en la categoría seleccionada
-    li $v0, 4
-    la $a0, error
-    syscall
-    li $v0, 1
-    li $a0, 602              # Error 602: No hay objetos
-    syscall
-    la $a0, return           # Limpiar línea para la salida
-    li $v0, 4
-    syscall
-    jr $ra
-
-
-
-
+    error_empty_cat_list_obj:
+        # Si no hay categoría seleccionada
+        li $v0, 4
+        la $a0, error
+        syscall
+        li $v0, 1
+        li $a0, 601              # Error 601: No hay categorías
+        syscall
+        la $a0, return           # Limpiar línea para la salida
+        li $v0, 4
+        syscall
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
+        jr $ra
+    error_empty_obj:
+        # Si no hay objetos en la categoría seleccionada
+        li $v0, 4
+        la $a0, error
+        syscall
+        li $v0, 1
+        li $a0, 602              # Error 602: No hay objetos
+        syscall
+        la $a0, return           # Limpiar línea para la salida
+        li $v0, 4
+        syscall
+        lw $ra, 4($sp) # Recuperar la dirección de retorno ($ra) desde la pila.
+        addiu $sp, $sp, 4 # Liberar el espacio reservado en la pila.
+        jr $ra
 
 
 
@@ -461,4 +493,3 @@ exit:
     li $v0, 10                # Syscall para salir
     syscall
     jr $ra
-
