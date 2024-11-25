@@ -61,15 +61,13 @@ menu_loop:
 
     # Verificar si la opción es válida y llamar a la función correspondiente
     beq $t0, 0, exit           # Opción 0: Salir
-    slti $t1, $t0, 9
-    beq $t1, 0, error_option
-    slt $t1, $0, $t0
-    beq $t1, 0, error_option
+    bgt $t0, 8, error_option
+    blt $t0, 0, error_option
     # Usar la opción seleccionada para obtener la dirección de la función de la tabla
     la $t1, schedv             # Cargar la dirección de la tabla schedv
-    addi $t0, $t0, -1          # Resto 1 para luego multiplicar por 4
-    sll $t2, $t0, 2            # Multiplicar la opción por 4 (para acceder a la tabla de funciones)
-    add $t1, $t1, $t2          # Obtener la dirección de la función correspondiente
+    addi $t0, $t0, -1          # Resto 1 (8 opciones de 0 a 7) para luego multiplicar por 4
+    sll $t0, $t0, 2            # Multiplicar la opción por 4 (para acceder a la tabla de funciones)
+    add $t1, $t1, $t0          # Obtener la dirección de la función correspondiente
     lw $t1, 0($t1)             # Cargar la dirección de la función seleccionada
     jalr $t1                   # Saltar a la función correspondiente y guardar pc en $ra para que pueda volver
     j menu_loop                # Si la opción es negativa, repetir el menú
