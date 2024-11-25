@@ -323,18 +323,25 @@ delcategory:
     move $a0, $t1                          # Copia el valor de $t2 a $t1
     jal delALLobjects                      # Llamar a la función que elimina los objetos
     delete_category:
-        lw $a0, wclist                     # $a0 = node address to delete (el nodo al que apunta wclist)
-        la $a1, cclist                     # $a1 = list (la dirección de la lista para actualizar en caso de borrar el 1° nodo)
-        jal delnode                        # Llamar a la función que elimina el nodo
-        lw $t0, cclist                     # Cargamos el valor de cclist para actualizar wclist
-        sw $t0, wclist                     # Almacenamos el valor de cclist en wclist
-        la $a0, success                    # Imprimir mensaje de éxito
-        li $v0, 4
-        syscall
-        li $v0, 0                          # Operación exitosa
-        lw $ra, 4($sp)                     # Recuperar la dirección de retorno ($ra) desde la pila.
-        addiu $sp, $sp, 4                  # Liberar el espacio reservado en la pila.
-        jr $ra
+    lw $a0, wclist                         # $a0 = node address to delete (el nodo al que apunta wclist)
+    la $a1, cclist                         # $a1 = list (la dirección de la lista para actualizar en caso de borrar el 1° nodo)
+    lw $t2, 12($a0)                        # Guarda el nodo siguiente antes de borrar el actual
+    jal delnode                            # Llamar a la función que elimina el nodo
+    lw $t0, cclist                         # Cargamos el valor de cclist para actualizar wclist
+    beq $t2, $t0, update_wcl_1
+    sw $t2, wclist                         # Update wclist
+    j update_wcl_2
+    update_wcl_1:
+    lw $t2, 0($t2)                         # Cargo nodo anterior
+    sw $t2, wclist                         # Update wclist
+    update_wcl_2:
+    la $a0, success                        # Imprimir mensaje de éxito
+    li $v0, 4
+    syscall
+    li $v0, 0                              # Operación exitosa
+    lw $ra, 4($sp)                         # Recuperar la dirección de retorno ($ra) desde la pila.
+    addiu $sp, $sp, 4                      # Liberar el espacio reservado en la pila.
+    jr $ra
     err_no_cat_4:
         la $a0, error
         li $v0, 4
