@@ -1,0 +1,68 @@
+Programa .asm  // nasm -f elf sub_det.asm
+
+%include "asm_io.inc"
+; subrutina determinante 2x2
+
+segment .text
+		global calc_det
+		
+calc_det:
+        ; push ebp
+        ; mov  ebp, esp
+        ; sub  esp, 4  ; hace espacio para variable local de ser necesario
+        ; [ebp + 0] EBP guardado
+        ; [ebp + 4] Direccion de retorno
+        enter   0, 0                  ; Crear el marco de pila
+        push    ebx                   ; Guardar ebx porque lo usaremos
+        dump_stack 1,1,5
+
+        ; Ubicación de los elementos de la matriz
+        ; [ebp + 8] valor de (a)
+        ; [ebp + 12] valor de (b)
+        ; [ebp + 16] valor de (c)
+        ; [ebp + 20] valor de (d)
+        mov     eax, [ebp + 8]        ; Cargar el valor de a en eax (a)
+        mov     ebx, [ebp + 12]       ; Cargar el valor de b en ebx (b)
+        ;mov     ecx, [ebp + 16]       ; Cargar el valor de c en ecx (c)
+        ;mov     edx, [ebp + 20]       ; Cargar el valor de d en edx (d)
+
+        ; Calcular (a * d) - (b * c)
+        imul    eax, [ebp + 20]       ; eax = a * d
+        imul    ebx, [ebp + 16]       ; ebx = b * c
+        sub     eax, ebx              ; eax = (a * d) - (b * c)
+
+        ;mov     [ebp + 24], eax       ; Guardar el resultado en la dirección de salida
+
+        pop     ebx                   ; Restaurar ebx
+        ;mov eax, 0 ; Return 0 cuando era void
+        ; Ya tengo el resultado en el registro eax segun convencion
+        leave                          ; Limpiar el stack frame
+        ret                            ; Retornar de la función
+
+
+
+Programa .c:  // gcc -c det.c
+
+#include <stdio.h>
+/* prototipo para la rutina ensamblador */
+int calc_sum(int, int, int, int) __attribute__((cdecl));
+
+int main(void){
+	int a, b, c, d;
+
+	printf("Calcula determinante 2x2 \n");
+	printf("Valor a: ");
+	scanf("%d", &a);
+	printf("Valor b: ");
+	scanf("%d", &b);
+	printf("Valor c: ");
+	scanf("%d", &c);
+	printf("Valor d: ");
+	scanf("%d", &d);
+	printf("Det is: %d\n", cacl_det(a, b, c, d));
+	return 0;
+}
+
+// gcc -o midet det.o sub_det.o asm_io.o
+// O sino directamente como sigue sin el paso previo de gcc -c
+// gcc -o midet det.c sub_det.o asm_io.o
