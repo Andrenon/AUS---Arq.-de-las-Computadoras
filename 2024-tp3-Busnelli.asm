@@ -23,6 +23,7 @@ idObj:      .asciiz "Ingrese el ID de objeto a eliminar: "
 objName:    .asciiz "Ingrese el nombre del objeto: "
 success:    .asciiz "\nLa operacion se realizo con exito\n"
 notFound:   .asciiz "notFound\n"
+mask:       .word 0xDFDFDFDF
 
 .text
 main:
@@ -177,6 +178,21 @@ getblock:
     li $v0, 8
     syscall
     move $v0, $a0              # Syscall 8 devuelve en $a0, dirección de memoria que dimos scanf("%s", &a0)
+    
+    lw $a0, mask
+    lw $a1, 12($v0)
+    and $a1, $a1, $a0
+    sw $a1, 12($v0)
+    lw $a1, 8($v0)
+    and $a1, $a1, $a0
+    sw $a1, 8($v0)
+    lw $a1, 4($v0)
+    and $a1, $a1, $a0
+    sw $a1, 4($v0)
+    lw $a1, 0($v0)
+    and $a1, $a1, $a0
+    sw $a1, 0($v0)
+    
     lw $ra, 4($sp)             # Recuperar la dirección de retorno ($ra) desde la pila.
     addi $sp, $sp, 4           # Liberar el espacio reservado en la pila.
     jr $ra                     # Regresar al lugar de donde se llamó la función
@@ -610,3 +626,4 @@ exit:
     li $v0, 10                             # Syscall para salir
     syscall
     jr $ra
+
