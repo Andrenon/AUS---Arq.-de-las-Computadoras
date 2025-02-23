@@ -23,7 +23,7 @@ idObj:      .asciiz "Ingrese el ID de objeto a eliminar: "
 objName:    .asciiz "Ingrese el nombre del objeto: "
 success:    .asciiz "\nLa operacion se realizo con exito\n"
 notFound:   .asciiz "notFound\n"
-mask:       .word 0xDFDFDFDF
+mask:       .word 0x20202020 # 32=0x20
 
 .text
 main:
@@ -66,9 +66,9 @@ menu_loop:
     blt $t0, 0, error_option
     # Usar la opción seleccionada para obtener la dirección de la función de la tabla
     la $t1, schedv             # Cargar la dirección de la tabla schedv
-    addi $t0, $t0, -1          # Resto 1 (8 opciones de 0 a 7) para luego multiplicar por 4
+    addiu $t0, $t0, -1          # Resto 1 (8 opciones de 0 a 7) para luego multiplicar por 4
     sll $t0, $t0, 2            # Multiplicar la opción por 4 (para acceder a la tabla de funciones)
-    add $t1, $t1, $t0          # Obtener la dirección de la función correspondiente
+    addu $t1, $t1, $t0          # Obtener la dirección de la función correspondiente
     lw $t1, 0($t1)             # Cargar la dirección de la función seleccionada
     jalr $t1                   # Saltar a la función correspondiente y guardar pc en $ra para que pueda volver
     j menu_loop                # Si la opción es negativa, repetir el menú
@@ -180,6 +180,7 @@ getblock:
     move $v0, $a0              # Syscall 8 devuelve en $a0, dirección de memoria que dimos scanf("%s", &a0)
     
     lw $a0, mask
+    nor $a0, $a0, $a0          # not (mask)
     lw $a1, 12($v0)
     and $a1, $a1, $a0
     sw $a1, 12($v0)
@@ -626,4 +627,3 @@ exit:
     li $v0, 10                             # Syscall para salir
     syscall
     jr $ra
-
