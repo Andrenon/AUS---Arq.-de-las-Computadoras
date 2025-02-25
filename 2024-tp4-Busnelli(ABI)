@@ -45,7 +45,7 @@ Programa .c:  // gcc -c det.c
 
 #include <stdio.h>
 /* prototipo para la rutina ensamblador */
-int calc_sum(int, int, int, int) __attribute__((cdecl));
+int calc_det(int, int, int, int) __attribute__((cdecl));
 
 int main(void){
 	int a, b, c, d;
